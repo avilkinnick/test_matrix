@@ -157,6 +157,13 @@ int main(int argc, char* argv[])
             }
         }
 
+        SDL_GL_MakeCurrent(main_window, gl_context);
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT);
+
+        SDL_GL_SwapWindow(main_window);
+
+        SDL_SetRenderTarget(renderer, NULL);
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
         SDL_RenderClear(renderer);
 
