@@ -25,10 +25,15 @@ TTF_Font* font = NULL;
 SDL_Window* main_window = NULL;
 SDL_GLContext gl_context = NULL;
 
+char* absolute_vertex_shader_path = NULL;
+char* absolute_fragment_shader_path = NULL;
+
 SDL_Window* info_window = NULL;
 SDL_Renderer* renderer = NULL;
 
 static void cleanup(void);
+
+static char* get_absolute_path(const char* const relative_path);
 
 int main(int argc, char* argv[])
 {
@@ -59,16 +64,11 @@ int main(int argc, char* argv[])
         return EXIT_FAILURE;
     }
 
-    const char* const relative_font_path = "resources/IosevkaNerdFont-Regular.ttf";
-    const size_t absolute_font_path_size = strlen(absolute_bin_dir) + strlen(relative_font_path) + 1;
-    absolute_font_path = malloc(absolute_font_path_size);
+    absolute_font_path = get_absolute_path("resources/fonts/IosevkaNerdFont-Regular.ttf");
     if (absolute_font_path == NULL)
     {
-        fputs("Failed to allocate memory for absolute font path\n", stderr);
         return EXIT_FAILURE;
     }
-
-    snprintf(absolute_font_path, absolute_font_path_size, "%s%s", absolute_bin_dir, relative_font_path);
 
     font = TTF_OpenFont(absolute_font_path, 24);
     if (font == NULL)
@@ -109,6 +109,18 @@ int main(int argc, char* argv[])
     if (!gladLoadGLLoader(SDL_GL_GetProcAddress))
     {
         fputs("Failed to initialize glad\n", stderr);
+        return EXIT_FAILURE;
+    }
+
+    absolute_vertex_shader_path = get_absolute_path("resources/shaders/shader.vert");
+    if (absolute_vertex_shader_path == NULL)
+    {
+        return EXIT_FAILURE;
+    }
+
+    absolute_fragment_shader_path = get_absolute_path("resources/shaders/shader.frag");
+    if (absolute_fragment_shader_path == NULL)
+    {
         return EXIT_FAILURE;
     }
 
@@ -185,6 +197,9 @@ static void cleanup(void)
         SDL_DestroyWindow(info_window);
     }
 
+    free(absolute_fragment_shader_path);
+    free(absolute_vertex_shader_path);
+
     if (gl_context != NULL)
     {
         SDL_GL_DeleteContext(gl_context);
@@ -209,4 +224,19 @@ static void cleanup(void)
 
     TTF_Quit();
     SDL_Quit();
+}
+
+static char* get_absolute_path(const char* const relative_path)
+{
+    const size_t absolute_path_size = strlen(absolute_bin_dir) + strlen(relative_path) + 1;
+    char* const absolute_path = malloc(absolute_path_size);
+    if (absolute_path == NULL)
+    {
+        fputs("Failed to allocate memory for absolute path\n", stderr);
+        return NULL;
+    }
+
+    snprintf(absolute_path, absolute_path_size, "%s%s", absolute_bin_dir, relative_path);
+
+    return absolute_path;
 }
