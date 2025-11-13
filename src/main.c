@@ -25,8 +25,8 @@ TTF_Font* font = NULL;
 SDL_Window* main_window = NULL;
 SDL_GLContext gl_context = NULL;
 
-char* absolute_vertex_shader_path = NULL;
-char* absolute_fragment_shader_path = NULL;
+GLuint vertex_shader = 0;
+GLuint fragment_shader = 0;
 
 SDL_Window* info_window = NULL;
 SDL_Renderer* renderer = NULL;
@@ -34,6 +34,8 @@ SDL_Renderer* renderer = NULL;
 static void cleanup(void);
 
 static char* get_absolute_path(const char* const relative_path);
+
+static GLuint load_shader(const char* const relative_path, const GLenum type);
 
 int main(int argc, char* argv[])
 {
@@ -112,14 +114,14 @@ int main(int argc, char* argv[])
         return EXIT_FAILURE;
     }
 
-    absolute_vertex_shader_path = get_absolute_path("resources/shaders/shader.vert");
-    if (absolute_vertex_shader_path == NULL)
+    vertex_shader = load_shader("resources/shaders/shader.vert", GL_VERTEX_SHADER);
+    if (vertex_shader == 0)
     {
         return EXIT_FAILURE;
     }
 
-    absolute_fragment_shader_path = get_absolute_path("resources/shaders/shader.frag");
-    if (absolute_fragment_shader_path == NULL)
+    fragment_shader = load_shader("resources/shaders/shader.frag", GL_FRAGMENT_SHADER);
+    if (fragment_shader == 0)
     {
         return EXIT_FAILURE;
     }
@@ -197,8 +199,15 @@ static void cleanup(void)
         SDL_DestroyWindow(info_window);
     }
 
-    free(absolute_fragment_shader_path);
-    free(absolute_vertex_shader_path);
+    if (fragment_shader != 0)
+    {
+        glDeleteShader(fragment_shader);
+    }
+
+    if (vertex_shader != 0)
+    {
+        glDeleteShader(vertex_shader);
+    }
 
     if (gl_context != NULL)
     {
@@ -229,6 +238,7 @@ static void cleanup(void)
 static char* get_absolute_path(const char* const relative_path)
 {
     const size_t absolute_path_size = strlen(absolute_bin_dir) + strlen(relative_path) + 1;
+
     char* const absolute_path = malloc(absolute_path_size);
     if (absolute_path == NULL)
     {
@@ -239,4 +249,56 @@ static char* get_absolute_path(const char* const relative_path)
     snprintf(absolute_path, absolute_path_size, "%s%s", absolute_bin_dir, relative_path);
 
     return absolute_path;
+}
+
+static GLuint load_shader(const char* const relative_path, const GLenum type)
+{
+    char* const absolute_shader_path = get_absolute_path(relative_path);
+    if (absolute_shader_path == NULL)
+    {
+        return 0;
+    }
+
+    FILE* const shader_file = fopen(absolute_shader_path, "r");
+    free(absolute_shader_path);
+    if (shader_file == NULL)
+    {
+        fprintf(stderr, "Failed to open %s\n", relative_path);
+        return 0;
+    }
+
+    fseek(shader_file, 0, SEEK_END);
+    const long shader_code_length = ftell(shader_file);
+
+    char* const shader_code = malloc(shader_code_length + 1);
+    if (shader_code == NULL)
+    {
+        fputs("Failed to allocate memory for shader code\n", stderr);
+        fclose(shader_file);
+        return 0;
+    }
+
+    fseek(shader_file, 0, SEEK_SET);
+    fread(shader_code, shader_code_length, 1, shader_file);
+    shader_code[shader_code_length] = '\0';
+
+    fclose(shader_file);
+
+    const GLuint shader = glCreateShader(type);
+    glShaderSource(shader, 1, (const GLchar* const *)&shader_code, NULL);
+    glCompileShader(shader);
+
+    GLint success;
+    glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
+    if (!success)
+    {
+        GLchar info_log[512];
+        glGetShaderInfoLog(shader, 512, NULL, info_log);
+        fprintf(stderr, "Failed to compile %s\n", relative_path);
+        fprintf(stderr, "Info log: %s\n", info_log);
+        glDeleteShader(shader);
+        return 0;
+    }
+
+    return shader;
 }
