@@ -223,6 +223,12 @@ int main(int argc, char* argv[])
 
     const SDL_Color white = {255, 255, 255, 255};
 
+    Vec3 camera_pos = {0.0f, 0.0f, 3.0f};
+    Vec3 camera_dir = {0.0f, 0.0f, -1.0f};
+
+    float yaw_deg = 0.0f;
+    float pitch_deg = 0.0f;
+
     bool quit = false;
     while (!quit)
     {
@@ -270,6 +276,8 @@ int main(int argc, char* argv[])
         render_text_vec3("points[1]", &points[1], white, 10, 40);
         render_text_vec3("points[2]", &points[2], white, 10, 70);
         render_text_vec3("points[3]", &points[3], white, 10, 100);
+        render_text_vec3("camera_pos", &camera_pos, white, 10, 130);
+        render_text_vec3("camera_dir", &camera_dir, white, 10, 160);
 
         SDL_RenderPresent(renderer);
     }
