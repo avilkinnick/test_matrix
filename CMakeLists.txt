@@ -5,6 +5,8 @@ project(test_matrix)
 set(CMAKE_C_STANDARD 17)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
+cmake_policy(SET CMP0072 NEW)
+
 find_package(OpenGL REQUIRED)
 find_package(SDL2 REQUIRED)
 find_package(SDL2_ttf REQUIRED)
@@ -21,6 +23,12 @@ target_link_libraries(${TARGET_NAME}
     SDL2::SDL2
     SDL2::SDL2main
     SDL2_ttf::SDL2_ttf
+)
+
+add_custom_command(
+    TARGET ${TARGET_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+    ${PROJECT_SOURCE_DIR}/resources $<TARGET_FILE_DIR:${TARGET_NAME}>/resources
 )
 
 if(MSVC)

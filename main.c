@@ -1,10 +1,12 @@
 #include <SDL.h>
 #include <SDL_error.h>
 #include <SDL_events.h>
+#include <SDL_filesystem.h>
 #include <SDL_hints.h>
 #include <SDL_keycode.h>
 #include <SDL_main.h>
 #include <SDL_render.h>
+#include <SDL_stdinc.h>
 #include <SDL_ttf.h>
 #include <SDL_video.h>
 
@@ -12,6 +14,11 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+
+char* absolute_bin_dir = NULL;
+char* absolute_font_path = NULL;
+TTF_Font* font = NULL;
 
 SDL_Window* main_window = NULL;
 SDL_GLContext gl_context = NULL;
@@ -39,6 +46,32 @@ int main(int argc, char* argv[])
     {
         fputs("Failed to initialize SDL_ttf\n", stderr);
         fprintf(stderr, "TTF error: %s\n", TTF_GetError());
+        return EXIT_FAILURE;
+    }
+
+    absolute_bin_dir = SDL_GetBasePath();
+    if (absolute_bin_dir == NULL)
+    {
+        fputs("Failed to get absolute bin dir\n", stderr);
+        fprintf(stderr, "SDL error: %s\n", SDL_GetError());
+        return EXIT_FAILURE;
+    }
+
+    const char* const relative_font_path = "resources/IosevkaNerdFont-Regular.ttf";
+    const size_t absolute_font_path_size = strlen(absolute_bin_dir) + strlen(relative_font_path) + 1;
+    absolute_font_path = malloc(absolute_font_path_size);
+    if (absolute_font_path == NULL)
+    {
+        fputs("Failed to allocate memory for absolute font path\n", stderr);
+        return EXIT_FAILURE;
+    }
+
+    snprintf(absolute_font_path, absolute_font_path_size, "%s%s", absolute_bin_dir, relative_font_path);
+
+    font = TTF_OpenFont(absolute_font_path, 24);
+    if (font == NULL)
+    {
+        fprintf(stderr, "Failed to open font %s\n", absolute_font_path);
         return EXIT_FAILURE;
     }
 
@@ -140,6 +173,18 @@ static void cleanup(void)
     if (main_window != NULL)
     {
         SDL_DestroyWindow(main_window);
+    }
+
+    if (font != NULL)
+    {
+        TTF_CloseFont(font);
+    }
+
+    free(absolute_font_path);
+
+    if (absolute_bin_dir != NULL)
+    {
+        SDL_free(absolute_bin_dir);
     }
 
     TTF_Quit();
