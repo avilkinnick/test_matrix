@@ -1,3 +1,5 @@
+#include "glad/glad.h"
+
 #include <SDL.h>
 #include <SDL_error.h>
 #include <SDL_events.h>
@@ -104,6 +106,12 @@ int main(int argc, char* argv[])
         return EXIT_FAILURE;
     }
 
+    if (!gladLoadGLLoader(SDL_GL_GetProcAddress))
+    {
+        fputs("Failed to initialize glad\n", stderr);
+        return EXIT_FAILURE;
+    }
+
     info_window = SDL_CreateWindow("Info", 1000, 100, 800, 800, SDL_WINDOW_RESIZABLE);
     if (info_window == NULL)
     {
@@ -128,6 +136,11 @@ int main(int argc, char* argv[])
         {
             switch (event.type)
             {
+                case SDL_QUIT:
+                {
+                    quit = true;
+                    break;
+                }
                 case SDL_KEYDOWN:
                 {
                     switch (event.key.keysym.sym)

@@ -15,7 +15,14 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin)
 
 set(TARGET_NAME test_matrix)
 
-add_executable(${TARGET_NAME} ${PROJECT_SOURCE_DIR}/main.c)
+add_executable(${TARGET_NAME}
+    ${PROJECT_SOURCE_DIR}/src/glad.c
+    ${PROJECT_SOURCE_DIR}/src/main.c
+)
+
+target_include_directories(${TARGET_NAME} PRIVATE
+    ${PROJECT_SOURCE_DIR}/include
+)
 
 target_link_libraries(${TARGET_NAME}
     m
