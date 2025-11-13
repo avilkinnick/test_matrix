@@ -27,6 +27,7 @@ SDL_GLContext gl_context = NULL;
 
 GLuint vertex_shader = 0;
 GLuint fragment_shader = 0;
+GLuint shader_program = 0;
 
 SDL_Window* info_window = NULL;
 SDL_Renderer* renderer = NULL;
@@ -126,6 +127,30 @@ int main(int argc, char* argv[])
         return EXIT_FAILURE;
     }
 
+    shader_program = glCreateProgram();
+    glAttachShader(shader_program, vertex_shader);
+    glAttachShader(shader_program, fragment_shader);
+    glLinkProgram(shader_program);
+    glDetachShader(shader_program, fragment_shader);
+    glDetachShader(shader_program, vertex_shader);
+
+    glDeleteShader(fragment_shader);
+    fragment_shader = 0;
+
+    glDeleteShader(vertex_shader);
+    vertex_shader = 0;
+
+    GLint success;
+    glGetProgramiv(shader_program, GL_LINK_STATUS, &success);
+    if (!success)
+    {
+        GLchar info_log[512];
+        glGetProgramInfoLog(shader_program, 512, NULL, info_log);
+        fputs("Failed to link shader program\n", stderr);
+        fprintf(stderr, "Info log: %s\n", info_log);
+        return EXIT_FAILURE;
+    }
+
     info_window = SDL_CreateWindow("Info", 1000, 100, 800, 800, SDL_WINDOW_RESIZABLE);
     if (info_window == NULL)
     {
@@ -197,6 +222,11 @@ static void cleanup(void)
     if (info_window != NULL)
     {
         SDL_DestroyWindow(info_window);
+    }
+
+    if (shader_program != 0)
+    {
+        glDeleteProgram(shader_program);
     }
 
     if (fragment_shader != 0)
