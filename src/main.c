@@ -7,8 +7,11 @@
 #include <SDL_hints.h>
 #include <SDL_keycode.h>
 #include <SDL_main.h>
+#include <SDL_pixels.h>
+#include <SDL_rect.h>
 #include <SDL_render.h>
 #include <SDL_stdinc.h>
+#include <SDL_surface.h>
 #include <SDL_ttf.h>
 #include <SDL_video.h>
 
@@ -17,6 +20,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+typedef struct Vec3
+{
+    float value[3];
+} Vec3;
 
 char* absolute_bin_dir = NULL;
 char* absolute_font_path = NULL;
@@ -41,6 +49,11 @@ static void cleanup(void);
 static char* get_absolute_path(const char* const relative_path);
 
 static GLuint load_shader(const char* const relative_path, const GLenum type);
+
+static bool render_text(const char* const text, const SDL_Color color, const int x, const int y);
+
+static bool render_text_vec3(const char* const name, const Vec3* const vec,
+    const SDL_Color color, const int x, const int y);
 
 int main(int argc, char* argv[])
 {
@@ -201,6 +214,15 @@ int main(int argc, char* argv[])
         return EXIT_FAILURE;
     }
 
+    const Vec3 points[] = {
+        {vertices[0], vertices[1], vertices[2]},
+        {vertices[6], vertices[7], vertices[8]},
+        {vertices[12], vertices[13], vertices[14]},
+        {vertices[18], vertices[19], vertices[20]},
+    };
+
+    const SDL_Color white = {255, 255, 255, 255};
+
     bool quit = false;
     while (!quit)
     {
@@ -243,6 +265,11 @@ int main(int argc, char* argv[])
         SDL_SetRenderTarget(renderer, NULL);
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
         SDL_RenderClear(renderer);
+
+        render_text_vec3("points[0]", &points[0], white, 10, 10);
+        render_text_vec3("points[1]", &points[1], white, 10, 40);
+        render_text_vec3("points[2]", &points[2], white, 10, 70);
+        render_text_vec3("points[3]", &points[3], white, 10, 100);
 
         SDL_RenderPresent(renderer);
     }
@@ -384,4 +411,48 @@ static GLuint load_shader(const char* const relative_path, const GLenum type)
     }
 
     return shader;
+}
+
+static bool render_text(const char* const text, const SDL_Color color, const int x, const int y)
+{
+    SDL_Surface* const text_surface = TTF_RenderUTF8_Blended_Wrapped(font, text, color, 0);
+    if (text_surface == NULL)
+    {
+        fputs("Failed to create text surface\n", stderr);
+        fprintf(stderr, "TTF error: %s\n", TTF_GetError());
+        return false;
+    }
+
+    SDL_Texture* const text_texture = SDL_CreateTextureFromSurface(renderer, text_surface);
+    SDL_FreeSurface(text_surface);
+    if (text_texture == NULL)
+    {
+        fputs("Failed to create texture from text surface\n", stderr);
+        fprintf(stderr, "SDL error: %s\n", SDL_GetError());
+        return false;
+    }
+
+    SDL_Rect dstrect;
+    dstrect.x = x;
+    dstrect.y = y;
+    SDL_QueryTexture(text_texture, NULL, NULL, &dstrect.w, &dstrect.h);
+
+    SDL_RenderCopy(renderer, text_texture, NULL, &dstrect);
+
+    SDL_DestroyTexture(text_texture);
+
+    return true;
+}
+
+static bool render_text_vec3(const char* const name, const Vec3* const vec,
+    const SDL_Color color, const int x, const int y
+)
+{
+    char format[512];
+    snprintf(format, 512, "%s = {%%9.3f, %%9.3f, %%9.3f}", name);
+
+    char text[512];
+    snprintf(text, 512, format, vec->value[0], vec->value[1], vec->value[2]);
+
+    return render_text(text, color, x, y);
 }
