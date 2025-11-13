@@ -29,6 +29,10 @@ GLuint vertex_shader = 0;
 GLuint fragment_shader = 0;
 GLuint shader_program = 0;
 
+GLuint vbo = 0;
+GLuint ebo = 0;
+GLuint vao = 0;
+
 SDL_Window* info_window = NULL;
 SDL_Renderer* renderer = NULL;
 
@@ -151,6 +155,36 @@ int main(int argc, char* argv[])
         return EXIT_FAILURE;
     }
 
+    const float vertices[] = {
+        // position         color
+        -0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 0.0f,
+        -0.5f,  0.5f, 0.0f, 0.0f, 1.0f, 0.0f,
+         0.5f,  0.5f, 0.0f, 0.0f, 0.0f, 1.0f,
+         0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 1.0f
+    };
+
+    const unsigned int indices[] = {
+        0, 1, 2,
+        0, 2, 3
+    };
+
+    glGenBuffers(1, &vbo);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+    glGenBuffers(1, &ebo);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+
+    glGenVertexArrays(1, &vao);
+    glBindVertexArray(vao);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+
     info_window = SDL_CreateWindow("Info", 1000, 100, 800, 800, SDL_WINDOW_RESIZABLE);
     if (info_window == NULL)
     {
@@ -200,6 +234,10 @@ int main(int argc, char* argv[])
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
+        glUseProgram(shader_program);
+        glBindVertexArray(vao);
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, (void*)0);
+
         SDL_GL_SwapWindow(main_window);
 
         SDL_SetRenderTarget(renderer, NULL);
@@ -222,6 +260,21 @@ static void cleanup(void)
     if (info_window != NULL)
     {
         SDL_DestroyWindow(info_window);
+    }
+
+    if (vao != 0)
+    {
+        glDeleteVertexArrays(1, &vao);
+    }
+
+    if (ebo != 0)
+    {
+        glDeleteBuffers(1, &ebo);
+    }
+
+    if (vbo != 0)
+    {
+        glDeleteBuffers(1, &vbo);
     }
 
     if (shader_program != 0)
