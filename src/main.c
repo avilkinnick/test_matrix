@@ -32,6 +32,8 @@ static float vec3f_get_length(const Vec3f* const vec);
 
 static Vec3f vec3f_normalize(const Vec3f* const vec);
 
+static Vec3f vec3f_cross(const Vec3f* const vec1, const Vec3f* const vec2);
+
 char* absolute_bin_dir = NULL;
 char* absolute_font_path = NULL;
 TTF_Font* font = NULL;
@@ -237,6 +239,8 @@ int main(int argc, char* argv[])
     Vec3f camera_pos = {0.0f, 0.0f, 3.0f};
     Vec3f camera_dir = {0.0f, 0.0f, -1.0f};
     const Vec3f camera_up = {0.0f, 1.0f, 0.0f};
+    Vec3f camera_right = vec3f_cross(&camera_dir, &camera_up);
+    camera_right = vec3f_normalize(&camera_right);
 
     float yaw_deg = 0.0f;
     float pitch_deg = 0.0f;
@@ -319,8 +323,11 @@ int main(int argc, char* argv[])
 
                     camera_dir.value[0] = sinf(yaw_rad) * cosf(pitch_rad);
                     camera_dir.value[1] = sinf(pitch_rad);
-                    camera_dir.value[2] = cosf(yaw_rad) * cosf(pitch_rad);
+                    camera_dir.value[2] = -cosf(yaw_rad) * cosf(pitch_rad);
                     camera_dir = vec3f_normalize(&camera_dir);
+
+                    camera_right = vec3f_cross(&camera_dir, &camera_up);
+                    camera_right = vec3f_normalize(&camera_right);
 
                     break;
                 }
@@ -347,9 +354,10 @@ int main(int argc, char* argv[])
         render_text_vec3f("points[3]", &points[3], color_green, 10, 100);
         render_text_float("yaw_deg", yaw_deg, color_orange, 10, 130);
         render_text_float("pitch_deg", pitch_deg, color_orange, 286, 130);
-        render_text_vec3f("camera_pos", &camera_pos, color_blue, 10, 160);
-        render_text_vec3f("camera_dir", &camera_dir, color_blue, 10, 190);
-        render_text_vec3f(" camera_up", &camera_up, color_blue, 10, 220);
+        render_text_vec3f("  camera_pos", &camera_pos, color_blue, 10, 160);
+        render_text_vec3f("  camera_dir", &camera_dir, color_blue, 10, 190);
+        render_text_vec3f("   camera_up", &camera_up, color_blue, 10, 220);
+        render_text_vec3f("camera_right", &camera_right, color_blue, 10, 250);
 
         SDL_RenderPresent(renderer);
     }
@@ -367,6 +375,15 @@ static Vec3f vec3f_normalize(const Vec3f* const vec)
     const float length = vec3f_get_length(vec);
 
     return (Vec3f){vec->value[0] / length, vec->value[1] / length, vec->value[2] / length};
+}
+
+static Vec3f vec3f_cross(const Vec3f* const vec1, const Vec3f* const vec2)
+{
+    return (Vec3f){
+        vec1->value[1] * vec2->value[2] - vec1->value[2] * vec2->value[1],
+        vec1->value[0] * vec2->value[2] - vec1->value[2] * vec2->value[0],
+        vec1->value[0] * vec2->value[1] - vec1->value[1] * vec2->value[0]
+    };
 }
 
 static void cleanup(void)
