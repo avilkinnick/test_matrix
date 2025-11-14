@@ -253,7 +253,6 @@ int main(int argc, char* argv[])
     Vec3f camera_right = vec3f_cross(&camera_dir, &world_up);
     camera_right = vec3f_normalize(&camera_right);
     Vec3f camera_up = vec3f_cross(&camera_right, &camera_dir);
-    camera_up.value[1] = -camera_up.value[1];
 
     float yaw_deg = 0.0f;
     float pitch_deg = 0.0f;
@@ -372,7 +371,6 @@ int main(int argc, char* argv[])
                     camera_right = vec3f_normalize(&camera_right);
 
                     camera_up = vec3f_cross(&camera_right, &camera_dir);
-                    camera_up.value[1] = -camera_up.value[1];
 
                     {
                         const float* const R = camera_right.value;
@@ -452,7 +450,7 @@ static Vec3f vec3f_cross(const Vec3f* const vec1, const Vec3f* const vec2)
 {
     return (Vec3f){
         vec1->value[1] * vec2->value[2] - vec1->value[2] * vec2->value[1],
-        vec1->value[0] * vec2->value[2] - vec1->value[2] * vec2->value[0],
+        vec1->value[2] * vec2->value[0] - vec1->value[0] * vec2->value[2],
         vec1->value[0] * vec2->value[1] - vec1->value[1] * vec2->value[0]
     };
 }
