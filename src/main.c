@@ -7,6 +7,7 @@
 #include <SDL_hints.h>
 #include <SDL_keycode.h>
 #include <SDL_main.h>
+#include <SDL_mouse.h>
 #include <SDL_pixels.h>
 #include <SDL_rect.h>
 #include <SDL_render.h>
@@ -15,16 +16,21 @@
 #include <SDL_ttf.h>
 #include <SDL_video.h>
 
+#include <math.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-typedef struct Vec3
+typedef struct Vec3f
 {
     float value[3];
-} Vec3;
+} Vec3f;
+
+static float vec3f_get_length(const Vec3f* const vec);
+
+static Vec3f vec3f_normalize(const Vec3f* const vec);
 
 char* absolute_bin_dir = NULL;
 char* absolute_font_path = NULL;
@@ -52,7 +58,10 @@ static GLuint load_shader(const char* const relative_path, const GLenum type);
 
 static bool render_text(const char* const text, const SDL_Color color, const int x, const int y);
 
-static bool render_text_vec3(const char* const name, const Vec3* const vec,
+static bool render_text_float(const char* const name, const float value,
+    const SDL_Color color, const int x, const int y);
+
+static bool render_text_vec3f(const char* const name, const Vec3f* const vec,
     const SDL_Color color, const int x, const int y);
 
 int main(int argc, char* argv[])
@@ -110,7 +119,7 @@ int main(int argc, char* argv[])
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
     SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
 
-    main_window = SDL_CreateWindow("Main", 100, 100, 800, 800, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
+    main_window = SDL_CreateWindow("Main", 20, 20, 900, 900, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
     if (main_window == NULL)
     {
         fputs("Failed to create main window\n", stderr);
@@ -198,7 +207,7 @@ int main(int argc, char* argv[])
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
     glEnableVertexAttribArray(1);
 
-    info_window = SDL_CreateWindow("Info", 1000, 100, 800, 800, SDL_WINDOW_RESIZABLE);
+    info_window = SDL_CreateWindow("Info", 940, 20, 900, 900, SDL_WINDOW_RESIZABLE);
     if (info_window == NULL)
     {
         fputs("Failed to create info window\n", stderr);
@@ -214,20 +223,25 @@ int main(int argc, char* argv[])
         return EXIT_FAILURE;
     }
 
-    const Vec3 points[] = {
+    const Vec3f points[] = {
         {vertices[0], vertices[1], vertices[2]},
         {vertices[6], vertices[7], vertices[8]},
         {vertices[12], vertices[13], vertices[14]},
         {vertices[18], vertices[19], vertices[20]},
     };
 
-    const SDL_Color white = {255, 255, 255, 255};
+    const SDL_Color color_blue = {0, 128, 255, 255};
+    const SDL_Color color_green = {128, 255, 0, 255};
+    const SDL_Color color_orange = {255, 128, 0, 255};
 
-    Vec3 camera_pos = {0.0f, 0.0f, 3.0f};
-    Vec3 camera_dir = {0.0f, 0.0f, -1.0f};
+    Vec3f camera_pos = {0.0f, 0.0f, 3.0f};
+    Vec3f camera_dir = {0.0f, 0.0f, -1.0f};
+    const Vec3f camera_up = {0.0f, 1.0f, 0.0f};
 
     float yaw_deg = 0.0f;
     float pitch_deg = 0.0f;
+
+    bool is_lmb_pressed = false;
 
     bool quit = false;
     while (!quit)
@@ -255,6 +269,61 @@ int main(int argc, char* argv[])
 
                     break;
                 }
+                case SDL_MOUSEBUTTONDOWN:
+                {
+                    switch (event.button.button)
+                    {
+                        case SDL_BUTTON_LEFT:
+                        {
+                            is_lmb_pressed = true;
+                            break;
+                        }
+                    }
+
+                    break;
+                }
+                case SDL_MOUSEBUTTONUP:
+                {
+                    switch (event.button.button)
+                    {
+                        case SDL_BUTTON_LEFT:
+                        {
+                            is_lmb_pressed = false;
+                            break;
+                        }
+                    }
+
+                    break;
+                }
+                case SDL_MOUSEMOTION:
+                {
+                    if (!is_lmb_pressed)
+                    {
+                        break;
+                    }
+
+                    yaw_deg += event.motion.xrel;
+
+                    pitch_deg -= event.motion.yrel;
+                    if (pitch_deg < -89.0f)
+                    {
+                        pitch_deg = -89.0f;
+                    }
+                    else if (pitch_deg > 89.0f)
+                    {
+                        pitch_deg = 89.0f;
+                    }
+
+                    const float yaw_rad = yaw_deg * M_PI / 180.0f;
+                    const float pitch_rad = pitch_deg * M_PI / 180.0f;
+
+                    camera_dir.value[0] = sinf(yaw_rad) * cosf(pitch_rad);
+                    camera_dir.value[1] = sinf(pitch_rad);
+                    camera_dir.value[2] = cosf(yaw_rad) * cosf(pitch_rad);
+                    camera_dir = vec3f_normalize(&camera_dir);
+
+                    break;
+                }
             }
         }
 
@@ -272,17 +341,32 @@ int main(int argc, char* argv[])
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
         SDL_RenderClear(renderer);
 
-        render_text_vec3("points[0]", &points[0], white, 10, 10);
-        render_text_vec3("points[1]", &points[1], white, 10, 40);
-        render_text_vec3("points[2]", &points[2], white, 10, 70);
-        render_text_vec3("points[3]", &points[3], white, 10, 100);
-        render_text_vec3("camera_pos", &camera_pos, white, 10, 130);
-        render_text_vec3("camera_dir", &camera_dir, white, 10, 160);
+        render_text_vec3f("points[0]", &points[0], color_green, 10, 10);
+        render_text_vec3f("points[1]", &points[1], color_green, 10, 40);
+        render_text_vec3f("points[2]", &points[2], color_green, 10, 70);
+        render_text_vec3f("points[3]", &points[3], color_green, 10, 100);
+        render_text_float("yaw_deg", yaw_deg, color_orange, 10, 130);
+        render_text_float("pitch_deg", pitch_deg, color_orange, 286, 130);
+        render_text_vec3f("camera_pos", &camera_pos, color_blue, 10, 160);
+        render_text_vec3f("camera_dir", &camera_dir, color_blue, 10, 190);
+        render_text_vec3f(" camera_up", &camera_up, color_blue, 10, 220);
 
         SDL_RenderPresent(renderer);
     }
 
     return EXIT_SUCCESS;
+}
+
+static float vec3f_get_length(const Vec3f* const vec)
+{
+    return sqrtf(vec->value[0] * vec->value[0] + vec->value[1] * vec->value[1] + vec->value[2] * vec->value[2]);
+}
+
+static Vec3f vec3f_normalize(const Vec3f* const vec)
+{
+    const float length = vec3f_get_length(vec);
+
+    return (Vec3f){vec->value[0] / length, vec->value[1] / length, vec->value[2] / length};
 }
 
 static void cleanup(void)
@@ -452,9 +536,17 @@ static bool render_text(const char* const text, const SDL_Color color, const int
     return true;
 }
 
-static bool render_text_vec3(const char* const name, const Vec3* const vec,
-    const SDL_Color color, const int x, const int y
-)
+static bool render_text_float(const char* const name, const float value,
+    const SDL_Color color, const int x, const int y)
+{
+    char text[512];
+    snprintf(text, 512, "%s = %9.3f", name, value);
+
+    return render_text(text, color, x, y);
+}
+
+static bool render_text_vec3f(const char* const name, const Vec3f* const vec,
+    const SDL_Color color, const int x, const int y)
 {
     char format[512];
     snprintf(format, 512, "%s = {%%9.3f, %%9.3f, %%9.3f}", name);
